@@ -1,0 +1,52 @@
+# Import necessary libraries
+import glob
+import numpy as np
+import cv2
+import random
+
+# Define function for camera calibration using Direct Linear Transform (DLT) algorithm
+def calibrate_camera_dlt(object_points, image_points, image_size):
+    # Convert object points and image points to numpy arrays
+    object_points = np.array(object_points)
+    image_points = np.array(image_points)
+
+    # Create matrix of zeros for camera matrix and distortion coefficients
+    camera_matrix = np.zeros((3, 3))
+    dist_coeffs = np.zeros((1, 5))
+
+    # Define calibration flags
+    flags = cv2.CALIB_ZERO_TANGENT_DIST |cv2.CALIB_FIX_K1|cv2.CALIB_FIX_K2|cv2.CALIB_FIX_K3
+    # Run camera calibration using DLT algorithm
+    retval, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, image_size, None, None, flags=flags)
+
+    # Return camera matrix and distortion coefficients
+    return camera_matrix, dist_coeffs
+
+# Define object points and image points for calibration
+img_points = []
+obj_points = []
+
+objp = np.zeros((11*8, 3), np.float32)
+objp[:, :2] = np.mgrid[0:11, 0:8].T.reshape(-1, 2)
+
+images = glob.glob('D:/test_photo/*.jpg')
+# Find corners in calibration images
+for fname in images:
+    img = cv2.imread(fname)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    ret, corners = cv2.findChessboardCorners(gray, (11,8), None)
+    if ret == True:
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        corners2 = cv2.cornerSubPix(gray,corners, (11,11), (-1,-1), criteria)#亚像素获取
+        img_points.append(corners2)#corners or corners2
+        obj_points.append(objp)
+
+# Define image size
+image_size = (640, 480)
+
+# Call function to calibrate camera using DLT algorithm
+camera_matrix, dist_coeffs = calibrate_camera_dlt(obj_points, img_points, image_size)
+
+# Print camera matrix and distortion coefficients
+print("Camera Matrix:\n", camera_matrix)
+print("Distortion Coefficients:\n", dist_coeffs)
